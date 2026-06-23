@@ -2,7 +2,7 @@
 title SolarSite Analytics
 echo.
 echo  =====================================================
-echo   ☀️   SolarSite Analytics — Instalador / Launcher
+echo      SolarSite Analytics - Instalador / Launcher
 echo  =====================================================
 echo.
 
@@ -11,9 +11,9 @@ cd /d "%~dp0"
 :: ── Verificar que Python esté instalado ───────────────────────────────────
 python --version >nul 2>&1
 if errorlevel 1 (
-    echo  ERROR: Python no está instalado o no está en el PATH.
-    echo  Descárgalo desde https://www.python.org/downloads/
-    echo     Asegúrate de marcar "Add Python to PATH" al instalar.
+    echo  ERROR: Python no esta instalado o no esta en el PATH.
+    echo  Descargalo desde https://www.python.org/downloads/
+    echo     Asegurate de marcar "Add Python to PATH" al instalar.
     pause
     exit /b
 )
@@ -22,9 +22,9 @@ echo  Python detectado
 echo.
 
 :: ── Crear entorno virtual solo si no existe ───────────────────────────────
-if not exist "venv\" (
+if not exist ".venv\" (
     echo  Creando entorno virtual por primera vez...
-    python -m venv venv
+    python -m venv .venv
     if errorlevel 1 (
         echo  ERROR: No se pudo crear el entorno virtual.
         pause
@@ -33,12 +33,12 @@ if not exist "venv\" (
     echo  Entorno virtual creado
     echo.
 ) else (
-    echo  Entorno virtual ya existe, omitiendo creación
+    echo  Entorno virtual ya existe, omitiendo creacion
     echo.
 )
 
 :: ── Activar entorno virtual ───────────────────────────────────────────────
-call venv\Scripts\activate
+call .venv\Scripts\activate
 if errorlevel 1 (
     echo  ERROR: No se pudo activar el entorno virtual.
     pause
@@ -49,11 +49,12 @@ if errorlevel 1 (
 python -c "import streamlit" >nul 2>&1
 if errorlevel 1 (
     echo  Instalando dependencias desde requirements.txt...
-    echo     Esto puede tardar unos minutos la primera vez.
+    echo       Esto puede tardar unos minutos la primera vez.
     echo.
-    pip install -r requirements.txt
+    python -m pip install --upgrade pip
+    python -m pip install -r requirements.txt --progress-bar on
     if errorlevel 1 (
-        echo  ERROR: Falló la instalación de dependencias.
+        echo  ERROR: Fallo la instalacion de dependencias.
         pause
         exit /b
     )
@@ -66,11 +67,10 @@ if errorlevel 1 (
 )
 
 :: ── Lanzar la aplicación ──────────────────────────────────────────────────
-echo  🌐 Iniciando SolarSite Analytics...
-echo  👉 Se abrirá en: http://localhost:8501
+echo  Iniciando SolarSite Analytics...
 echo.
-echo  Para cerrar la aplicación presiona CTRL + C
-echo  ─────────────────────────────────────────────
+echo  Para cerrar la aplicacion presiona CTRL + C
+echo  ____________________________________________________________
 echo.
 
 streamlit run app.py
