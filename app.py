@@ -3,7 +3,8 @@ app.py
 SolarSite Analytics — Interfaz principal Streamlit.
 Fase 3.1: Maquetación y Sidebar con parámetros del sistema.
 """
-
+import folium
+from streamlit_folium import st_folium
 import streamlit as st
 import pandas as pd
 from data_fetcher import fetch_solar_data, PRESET_CITIES, get_annual_summary
@@ -212,7 +213,88 @@ if st.session_state.df_energia is not None:
     ])
 
     with tab_mapa:
-        st.info("🗺️ Mapa interactivo — se implementará en el Paso 3.2")
+        st.subheader(f"📍 Ubicación seleccionada — {st.session_state.ciudad_act}")
+
+        # ── Datos para el mapa ─────────────────────────────────────────────
+        resumen = get_annual_summary(df)
+        rad_media = resumen["radiacion_media_dia"]
+
+        # Color del marcador según potencial solar
+        if rad_media >= 5.5:
+            color_marcador = "red"
+            potencial_label = "🔴 Muy Alto"
+        elif rad_media >= 4.5:
+            color_marcador = "orange"
+            potencial_label = "🟠 Alto"
+        elif rad_media >= 3.5:
+            color_marcador = "green"
+            potencial_label = "🟢 Moderado"
+        else:
+            color_marcador = "blue"
+            potencial_label = "🔵 Bajo"
+
+        # ── Construcción del mapa ──────────────────────────────────────────
+        mapa = folium.Map(
+            location=[lat, lon],
+            zoom_start=11,
+            tiles="CartoDB dark_matter",  # Estilo oscuro acorde a la UI
+        )
+
+        # Círculo de área de influencia
+        folium.Circle(
+            location=[lat, lon],
+            radius=3000,
+            color="#FFD700",
+            fill=True,
+            fill_color="#FFD700",
+            fill_opacity=0.08,
+            weight=1.5,
+        ).add_to(mapa)
+
+        # Marcador principal con popup detallado
+        popup_html = f"""
+        <div style="font-family:sans-serif; min-width:220px; padding:4px">
+            <h4 style="color:#FF6B35; margin:0 0 8px 0">☀️ {st.session_state.ciudad_act}</h4>
+            <table style="width:100%; font-size:13px; border-collapse:collapse">
+                <tr><td style="padding:3px 0; color:#666">Potencial solar</td>
+                    <td style="text-align:right; font-weight:bold">{potencial_label}</td></tr>
+                <tr><td style="padding:3px 0; color:#666">Radiación media</td>
+                    <td style="text-align:right"><b>{rad_media:.3f}</b> kWh/m²/día</td></tr>
+                <tr><td style="padding:3px 0; color:#666">Mejor mes</td>
+                    <td style="text-align:right"><b>{resumen['mejor_mes']}</b></td></tr>
+                <tr><td style="padding:3px 0; color:#666">Peor mes</td>
+                    <td style="text-align:right"><b>{resumen['peor_mes']}</b></td></tr>
+                <tr><td style="padding:3px 0; color:#666">Temperatura media</td>
+                    <td style="text-align:right"><b>{resumen['temperatura_media']:.1f}</b> °C</td></tr>
+                <tr><td style="padding:3px 0; color:#666">Nubosidad media</td>
+                    <td style="text-align:right"><b>{resumen['nubosidad_media']:.1f}</b> %</td></tr>
+                <tr><td style="padding:3px 0; color:#666">Latitud / Longitud</td>
+                    <td style="text-align:right">{lat:.4f} / {lon:.4f}</td></tr>
+            </table>
+        </div>
+        """
+
+        folium.Marker(
+            location=[lat, lon],
+            popup=folium.Popup(popup_html, max_width=280),
+            tooltip=f"☀️ {st.session_state.ciudad_act} — clic para detalles",
+            icon=folium.Icon(color=color_marcador, icon="sun-o", prefix="fa"),
+        ).add_to(mapa)
+
+        # ── Render del mapa ────────────────────────────────────────────────
+        col_mapa, col_info = st.columns([3, 1])
+
+        with col_mapa:
+            st_folium(mapa, width=None, height=420, returned_objects=[])
+
+        with col_info:
+            st.markdown("#### Resumen de ubicación")
+            st.metric("Potencial", potencial_label)
+            st.metric("Radiación media diaria", f"{rad_media:.2f} kWh/m²/día")
+            st.metric("Mejor mes", resumen["mejor_mes"])
+            st.metric("Peor mes", resumen["peor_mes"])
+            st.metric("Temperatura media", f"{resumen['temperatura_media']:.1f} °C")
+            st.metric("Nubosidad media", f"{resumen['nubosidad_media']:.1f} %")
 
     with tab_graficos:
         st.info("📈 Gráficos Plotly — se implementarán en el Paso 3.3")
