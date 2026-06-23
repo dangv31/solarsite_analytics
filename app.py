@@ -5,6 +5,8 @@ Fase 3.1: Maquetación y Sidebar con parámetros del sistema.
 """
 import folium
 from streamlit_folium import st_folium
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 import streamlit as st
 import pandas as pd
 from data_fetcher import fetch_solar_data, PRESET_CITIES, get_annual_summary
@@ -297,7 +299,142 @@ if st.session_state.df_energia is not None:
             st.metric("Nubosidad media", f"{resumen['nubosidad_media']:.1f} %")
 
     with tab_graficos:
-        st.info("📈 Gráficos Plotly — se implementarán en el Paso 3.3")
+        st.subheader("📈 Radiación Solar y Temperatura a lo largo del año")
+
+        meses      = df["mes"].tolist()
+        rad_real   = df["radiacion_kwh"].tolist()
+        rad_clear  = df["radiacion_clear"].tolist()
+        temp       = df["temperatura_c"].tolist()
+        nubosidad  = df["nubosidad_pct"].tolist()
+        energia    = df["energia_mes_kwh"].tolist()
+
+        # ── Gráfico 1: Radiación solar (real vs cielo despejado) ───────────
+        fig_rad = go.Figure()
+
+        fig_rad.add_trace(go.Scatter(
+            x=meses, y=rad_clear,
+            name="Cielo despejado",
+            mode="lines",
+            line=dict(color="#FFD700", width=2, dash="dot"),
+            fill=None,
+        ))
+
+        fig_rad.add_trace(go.Scatter(
+            x=meses, y=rad_real,
+            name="Radiación real (con nubes)",
+            mode="lines+markers",
+            line=dict(color="#FF6B35", width=3),
+            marker=dict(size=8, color="#FF6B35", line=dict(color="white", width=1.5)),
+            fill="tonexty",
+            fillcolor="rgba(255,107,53,0.12)",
+        ))
+
+        fig_rad.update_layout(
+            title=dict(text="☀️ Irradiación Global Horizontal (kWh/m²/día)", font=dict(size=16)),
+            xaxis_title="Mes",
+            yaxis_title="kWh/m²/día",
+            legend=dict(orientation="h", y=-0.2),
+            height=380,
+            plot_bgcolor="#0e1117",
+            paper_bgcolor="#0e1117",
+            font=dict(color="#e0e0e0"),
+            xaxis=dict(gridcolor="#2a2a4a"),
+            yaxis=dict(gridcolor="#2a2a4a"),
+            hovermode="x unified",
+        )
+
+        st.plotly_chart(fig_rad, use_container_width=True)
+
+        # ── Gráfico 2: Temperatura y Nubosidad (doble eje Y) ──────────────
+        fig_temp = make_subplots(specs=[[{"secondary_y": True}]])
+
+        fig_temp.add_trace(go.Bar(
+            x=meses, y=nubosidad,
+            name="Nubosidad (%)",
+            marker_color="rgba(100,149,237,0.5)",
+            marker_line_color="rgba(100,149,237,0.8)",
+            marker_line_width=1,
+        ), secondary_y=True)
+
+        fig_temp.add_trace(go.Scatter(
+            x=meses, y=temp,
+            name="Temperatura (°C)",
+            mode="lines+markers",
+            line=dict(color="#00CED1", width=3),
+            marker=dict(size=8, color="#00CED1", line=dict(color="white", width=1.5)),
+        ), secondary_y=False)
+
+        fig_temp.update_layout(
+            title=dict(text="🌡️ Temperatura Media y Nubosidad Mensual", font=dict(size=16)),
+            height=380,
+            plot_bgcolor="#0e1117",
+            paper_bgcolor="#0e1117",
+            font=dict(color="#e0e0e0"),
+            xaxis=dict(gridcolor="#2a2a4a"),
+            legend=dict(orientation="h", y=-0.2),
+            hovermode="x unified",
+        )
+        fig_temp.update_yaxes(
+            title_text="Temperatura (°C)",
+            gridcolor="#2a2a4a",
+            secondary_y=False,
+        )
+        fig_temp.update_yaxes(
+            title_text="Nubosidad (%)",
+            range=[0, 100],
+            secondary_y=True,
+            showgrid=False,
+        )
+
+        st.plotly_chart(fig_temp, use_container_width=True)
+
+        # ── Gráfico 3: Energía generada mensual (barras) ──────────────────
+        colores_barras = [
+            "#FF6B35" if e == max(energia) else
+            "#4a90d9" if e == min(energia) else
+            "#FFD700"
+            for e in energia
+        ]
+
+        fig_energia = go.Figure()
+
+        fig_energia.add_trace(go.Bar(
+            x=meses, y=energia,
+            name="Energía generada",
+            marker_color=colores_barras,
+            marker_line_color="rgba(255,255,255,0.2)",
+            marker_line_width=1,
+            text=[f"{e:.0f}" for e in energia],
+            textposition="outside",
+            textfont=dict(color="#e0e0e0", size=11),
+        ))
+
+        fig_energia.add_hline(
+            y=sum(energia) / 12,
+            line_dash="dash",
+            line_color="#ffffff",
+            line_width=1.5,
+            annotation_text=f"Media: {sum(energia)/12:.0f} kWh",
+            annotation_position="top right",
+            annotation_font_color="#ffffff",
+        )
+
+        fig_energia.update_layout(
+            title=dict(text="⚡ Energía Estimada Generada por Mes (kWh)", font=dict(size=16)),
+            xaxis_title="Mes",
+            yaxis_title="kWh",
+            height=380,
+            plot_bgcolor="#0e1117",
+            paper_bgcolor="#0e1117",
+            font=dict(color="#e0e0e0"),
+            xaxis=dict(gridcolor="#2a2a4a"),
+            yaxis=dict(gridcolor="#2a2a4a"),
+            showlegend=False,
+        )
+
+        st.plotly_chart(fig_energia, use_container_width=True)
+
+        st.caption("🟠 Mejor mes · 🔵 Peor mes · 🟡 Resto del año  |  Línea blanca = media anual")
 
     with tab_kpis:
         st.info("⚡ Dashboard de KPIs — se implementará en el Paso 3.4")
