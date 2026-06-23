@@ -191,9 +191,9 @@ if analizar:
         st.session_state.ciudad_act = ciudad
         st.session_state.lat        = lat
         st.session_state.lon        = lon
-        st.success(f"✅ Datos cargados para **{ciudad}**")
+        st.success(f"Datos cargados para **{ciudad}**")
     else:
-        st.error("❌ No se pudieron obtener datos. Verifica tu conexión a internet.")
+        st.error("No se pudieron obtener datos. Verifica tu conexión a internet.")
 
 # ---------------------------------------------------------------------------
 # Render principal
