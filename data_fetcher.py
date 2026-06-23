@@ -7,6 +7,8 @@ Retorna datos históricos mensuales de radiación, nubosidad y temperatura.
 import requests
 import pandas as pd
 from typing import Optional
+import json
+from pathlib import Path
 
 NASA_POWER_BASE_URL = "https://power.larc.nasa.gov/api/temporal/climatology/point"
 NASA_PARAMETERS     = "ALLSKY_SFC_SW_DWN,CLRSKY_SFC_SW_DWN,T2M,CLOUD_AMT"
@@ -21,17 +23,13 @@ NASA_MONTH_KEYS = [
     "JUL","AUG","SEP","OCT","NOV","DEC"
 ]
 
-PRESET_CITIES = {
-    "Medellín, Colombia":      (6.2442,  -75.5812),
-    "Bogotá, Colombia":        (4.7110,  -74.0721),
-    "Cali, Colombia":          (3.4516,  -76.5320),
-    "Barranquilla, Colombia":  (10.9685, -74.7813),
-    "Ciudad de México":        (19.4326, -99.1332),
-    "Madrid, España":          (40.4168,  -3.7038),
-    "Buenos Aires, Argentina": (-34.6037,-58.3816),
-    "Miami, EE.UU.":           (25.7617, -80.1918),
-    "Santiago, Chile":         (-33.4489,-70.6693),
-}
+def _load_cities() -> dict:
+    cfg_path = Path(__file__).parent / "config.json"
+    with open(cfg_path, "r", encoding="utf-8") as f:
+        raw = json.load(f)["ciudades"]
+    return {nombre: tuple(coords) for nombre, coords in raw.items()}
+
+PRESET_CITIES = _load_cities()
 
 
 def fetch_solar_data(

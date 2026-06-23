@@ -1,0 +1,56 @@
+{
+  "sistema": {
+    "panel_potencia_wp": 400,
+    "panel_eficiencia": 0.20,
+    "panel_area_m2": 2.0,
+    "num_paneles": 10,
+    "performance_ratio": 0.75,
+    "vida_util_anios": 25,
+    "degradacion_anual": 0.005
+  },
+  "economico": {
+    "tarifa_kwh_cop": 850,
+    "precio_sistema_cop": 18000000
+  },
+  "ambiental": {
+    "factor_emision_co2_kg_kwh": 0.126,
+    "co2_absorbido_arbol_kg_anio": 21
+  },
+  "ciudades": {
+    "Medellín (Antioquia)":           [6.2442,  -75.5812],
+    "Bogotá (Cundinamarca)":          [4.7110,  -74.0721],
+    "Cali (Valle del Cauca)":         [3.4516,  -76.5320],
+    "Barranquilla (Atlántico)":       [10.9685, -74.7813],
+    "Cartagena (Bolívar)":            [10.3910, -75.4794],
+    "Cúcuta (Norte de Santander)":    [7.8939,  -72.5078],
+    "Bucaramanga (Santander)":        [7.1254,  -73.1198],
+    "Pereira (Risaralda)":            [4.8087,  -75.6906],
+    "Manizales (Caldas)":             [5.0703,  -75.5138],
+    "Santa Marta (Magdalena)":        [11.2408, -74.2110],
+    "Ibagué (Tolima)":                [4.4389,  -75.2322],
+    "Villavicencio (Meta)":           [4.1420,  -73.6266],
+    "Pasto (Nariño)":                 [1.2136,  -77.2811],
+    "Montería (Córdoba)":             [8.7575,  -75.8908],
+    "Valledupar (Cesar)":             [10.4631, -73.2532],
+    "Neiva (Huila)":                  [2.9273,  -75.2819],
+    "Armenia (Quindío)":              [4.5339,  -75.6811],
+    "Sincelejo (Sucre)":              [9.3047,  -75.3978],
+    "Popayán (Cauca)":                [2.4448,  -76.6147],
+    "Tunja (Boyacá)":                 [5.5353,  -73.3678],
+    "Riohacha (La Guajira)":          [11.5444, -72.9072],
+    "Florencia (Caquetá)":            [1.6144,  -75.6062],
+    "Quibdó (Chocó)":                 [5.6919,  -76.6583],
+    "Yopal (Casanare)":               [5.3378,  -72.3959],
+    "Mocoa (Putumayo)":               [1.1524,  -76.6498]
+  },
+  "ui": {
+    "mapa_zoom": 11,
+    "mapa_tiles": "CartoDB dark_matter",
+    "mapa_radio_circulo_m": 3000,
+    "graficos_altura_px": 380,
+    "proyeccion_anios": 10,
+    "umbral_potencial_muy_alto": 5.5,
+    "umbral_potencial_alto": 4.5,
+    "umbral_potencial_moderado": 3.5
+  }
+}

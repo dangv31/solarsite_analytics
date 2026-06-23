@@ -10,13 +10,20 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import folium
 from streamlit_folium import st_folium
+import json
+from pathlib import Path
 
 from data_fetcher import fetch_solar_data, PRESET_CITIES, get_annual_summary
 from energy_calculator import (
     calcular_energia_mensual,
-    calcular_kpis,
-    DEFAULT_PARAMS,
+    calcular_kpis
 )
+
+def load_config():
+    with open(Path(__file__).parent / "config.json", "r", encoding="utf-8") as f:
+        return json.load(f)
+
+CFG = load_config()
 
 # ---------------------------------------------------------------------------
 # Configuración global de la página
@@ -104,14 +111,14 @@ with st.sidebar:
     num_paneles = st.slider(
         "Número de paneles",
         min_value=2, max_value=50,
-        value=DEFAULT_PARAMS["num_paneles"],
+        value=CFG["sistema"]["num_paneles"],
         step=1,
-        help="Cada panel es de 400 Wp (monocristalino estándar)",
+        help=f"Cada panel es de {CFG['sistema']['panel_potencia_wp']} Wp (monocristalino estándar)",
     )
     panel_eficiencia = st.slider(
         "Eficiencia del panel (%)",
         min_value=14, max_value=23,
-        value=int(DEFAULT_PARAMS["panel_eficiencia"] * 100),
+        value=int(CFG["sistema"]["panel_eficiencia"] * 100),
         step=1,
         help="Rango típico: 17-22% para paneles comerciales actuales",
     ) / 100
@@ -119,7 +126,7 @@ with st.sidebar:
     performance_ratio = st.slider(
         "Performance Ratio — PR (%)",
         min_value=60, max_value=90,
-        value=int(DEFAULT_PARAMS["performance_ratio"] * 100),
+        value=int(CFG["sistema"]["performance_ratio"] * 100),
         step=1,
         help="Pérdidas reales: inversor, temperatura, suciedad, cableado",
     ) / 100
@@ -130,17 +137,15 @@ with st.sidebar:
     tarifa_kwh = st.number_input(
         "Tarifa eléctrica (COP/kWh)",
         min_value=100, max_value=2000,
-        value=DEFAULT_PARAMS["tarifa_kwh_cop"],
+        value=CFG["economico"]["tarifa_kwh_cop"],
         step=50,
-        help="Consulta tu factura de energía. Media Colombia ≈ 850 COP/kWh",
     )
     precio_sistema = st.number_input(
         "Costo del sistema (COP)",
         min_value=1_000_000, max_value=100_000_000,
-        value=DEFAULT_PARAMS["precio_sistema_cop"],
+        value=CFG["economico"]["precio_sistema_cop"],
         step=500_000,
         format="%d",
-        help="Costo total de instalación: paneles, inversor y mano de obra",
     )
 
     st.markdown("---")
@@ -216,11 +221,15 @@ if st.session_state.df_energia is not None:
         resumen   = get_annual_summary(df)
         rad_media = resumen["radiacion_media_dia"]
 
-        if rad_media >= 5.5:
+        umbral_muy_alto = CFG["ui"]["umbral_potencial_muy_alto"]
+        umbral_alto     = CFG["ui"]["umbral_potencial_alto"]
+        umbral_moderado = CFG["ui"]["umbral_potencial_moderado"]
+
+        if rad_media >= umbral_muy_alto:
             color_marcador = "red";    potencial_label = "🔴 Muy Alto"
-        elif rad_media >= 4.5:
+        elif rad_media >= umbral_alto:
             color_marcador = "orange"; potencial_label = "🟠 Alto"
-        elif rad_media >= 3.5:
+        elif rad_media >= umbral_moderado:
             color_marcador = "green";  potencial_label = "🟢 Moderado"
         else:
             color_marcador = "blue";   potencial_label = "🔵 Bajo"
@@ -383,8 +392,8 @@ if st.session_state.df_energia is not None:
         st.markdown("#### 💰 Retorno Financiero")
         col5, col6, col7, col8 = st.columns(4)
         col5.metric("Ahorro mensual medio",   f"${kpis['ahorro_mensual_medio']:,.0f} COP",  "en factura eléctrica")
-        col6.metric("Ahorro anual estimado",  f"${kpis['ahorro_anual_cop']:,.0f} COP",       f"a {int(DEFAULT_PARAMS['tarifa_kwh_cop'])} COP/kWh")
-        col7.metric("Período de retorno",     f"{kpis['payback_anios']:.1f} años",           f"sobre {DEFAULT_PARAMS['vida_util_anios']} años de vida útil")
+        col6.metric("Ahorro anual estimado",  f"${kpis['ahorro_anual_cop']:,.0f} COP",       f"a {int(CFG['economico']['tarifa_kwh_cop'])} COP/kWh")
+        col7.metric("Período de retorno",     f"{kpis['payback_anios']:.1f} años",           f"sobre {CFG['sistema']['vida_util_anios']} años de vida útil")
         col8.metric("ROI a 25 años",          f"{kpis['roi_pct']:.1f}%",                     f"${kpis['ahorro_vida_util_cop']:,.0f} COP total")
 
         st.markdown("---")
@@ -398,22 +407,26 @@ if st.session_state.df_energia is not None:
             st.metric("Árboles equivalentes",  f"{int(kpis['co2_evitado_kg_anual']/21)} árboles/año", "1 árbol absorbe ~21 kg CO₂/año")
 
         with col10:
-            rad_media = get_annual_summary(df)["radiacion_media_dia"]
+            rad_media       = get_annual_summary(df)["radiacion_media_dia"]
+            umbral_muy_alto = CFG["ui"]["umbral_potencial_muy_alto"]
+            umbral_alto     = CFG["ui"]["umbral_potencial_alto"]
+            umbral_moderado = CFG["ui"]["umbral_potencial_moderado"]
+
             fig_gauge = go.Figure(go.Indicator(
                 mode="gauge+number+delta",
                 value=rad_media,
                 title={"text": "Radiación Media Diaria (kWh/m²/día)", "font": {"size": 15}},
-                delta={"reference": 4.5, "suffix": " vs ref. 4.5"},
+                delta={"reference": umbral_alto, "suffix": f" vs ref. {umbral_alto}"},
                 number={"suffix": " kWh/m²/día", "font": {"size": 22}},
                 gauge={
                     "axis": {"range": [0, 8], "tickcolor": "#e0e0e0"},
                     "bar":  {"color": "#FF6B35", "thickness": 0.25},
                     "bgcolor": "#1e1e2e", "bordercolor": "#2a2a4a",
                     "steps": [
-                        {"range": [0,   3],   "color": "#1a3a5c"},
-                        {"range": [3,   4.5], "color": "#1a5c3a"},
-                        {"range": [4.5, 6],   "color": "#5c4a1a"},
-                        {"range": [6,   8],   "color": "#5c1a1a"},
+                        {"range": [0,              umbral_moderado], "color": "#1a3a5c"},
+                        {"range": [umbral_moderado, umbral_alto],    "color": "#1a5c3a"},
+                        {"range": [umbral_alto,     umbral_muy_alto],"color": "#5c4a1a"},
+                        {"range": [umbral_muy_alto, 8],              "color": "#5c1a1a"},
                     ],
                     "threshold": {"line": {"color": "#FFD700", "width": 3}, "thickness": 0.8, "value": rad_media},
                 },
@@ -430,19 +443,19 @@ if st.session_state.df_energia is not None:
         st.markdown("#### 📊 Proyección financiera (primeros 10 años)")
         filas = []
         ahorro_base = kpis["ahorro_anual_cop"]
-        for anio in range(1, 11):
-            ahorro_anio = ahorro_base * ((1 - DEFAULT_PARAMS["degradacion_anual"]) ** (anio - 1))
+        for anio in range(1, CFG["ui"]["proyeccion_anios"] + 1):
+            ahorro_anio = ahorro_base * ((1 - CFG["sistema"]["degradacion_anual"]) ** (anio - 1))
             acumulado   = sum(
-                ahorro_base * ((1 - DEFAULT_PARAMS["degradacion_anual"]) ** a)
+                ahorro_base * ((1 - CFG["sistema"]["degradacion_anual"]) ** a)
                 for a in range(anio)
             )
-            recuperado = min(acumulado / DEFAULT_PARAMS["precio_sistema_cop"] * 100, 100)
+            recuperado = min(acumulado / CFG["economico"]["precio_sistema_cop"] * 100, 100)
             filas.append({
-                "Año":                        anio,
-                "Ahorro anual (COP)":         int(ahorro_anio),
-                "Ahorro acumulado (COP)":     int(acumulado),
-                "Inversión recuperada (%)":   round(recuperado, 1),
-                "¿Payback alcanzado?":        "✅ Sí" if acumulado >= DEFAULT_PARAMS["precio_sistema_cop"] else "⏳ No",
+                "Año":                       anio,
+                "Ahorro anual (COP)":        int(ahorro_anio),
+                "Ahorro acumulado (COP)":    int(acumulado),
+                "Inversión recuperada (%)":  round(recuperado, 1),
+                "¿Payback alcanzado?":       "✅ Sí" if acumulado >= CFG["economico"]["precio_sistema_cop"] else "⏳ No",
             })
         df_proyeccion = pd.DataFrame(filas)
         st.dataframe(
