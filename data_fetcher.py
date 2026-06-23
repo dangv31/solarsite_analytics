@@ -109,20 +109,3 @@ def get_annual_summary(df: pd.DataFrame) -> dict:
         "mejor_mes":           df.loc[df["radiacion_kwh"].idxmax(), "mes"],
         "peor_mes":            df.loc[df["radiacion_kwh"].idxmin(), "mes"],
     }
-
-
-if __name__ == "__main__":
-    LAT, LON = 6.2442, -75.5812
-
-    df = fetch_solar_data(LAT, LON)
-
-    if df is not None:
-        print("\n=== DataFrame de radiación solar ===")
-        print(df.to_string(index=False))
-
-        print("\n=== Resumen Anual ===")
-        summary = get_annual_summary(df)
-        for k, v in summary.items():
-            print(f"  {k:25s}: {v}")
-    else:
-        print("\n[FALLO] No se obtuvieron datos.")
