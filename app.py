@@ -423,7 +423,7 @@ if st.session_state.df_energia is not None:
             title=dict(text="⚡ Energía Estimada Generada por Mes (kWh)", font=dict(size=16)),
             xaxis_title="Mes",
             yaxis_title="kWh",
-            height=380,
+            height=440,
             plot_bgcolor="#0e1117",
             paper_bgcolor="#0e1117",
             font=dict(color="#e0e0e0"),
@@ -437,7 +437,152 @@ if st.session_state.df_energia is not None:
         st.caption("🟠 Mejor mes · 🔵 Peor mes · 🟡 Resto del año  |  Línea blanca = media anual")
 
     with tab_kpis:
-        st.info("⚡ Dashboard de KPIs — se implementará en el Paso 3.4")
+        st.subheader("⚡ KPIs del Sistema Fotovoltaico")
+
+        potencia_kwp = kpis["potencia_pico_kwp"]
+
+        # ── Fila 1: KPIs técnicos principales ─────────────────────────────
+        st.markdown("#### 🔧 Rendimiento Técnico")
+        col1, col2, col3, col4 = st.columns(4)
+
+        col1.metric(
+            "Potencia instalada",
+            f"{potencia_kwp:.1f} kWp",
+            f"{int(potencia_kwp * 1000 / 400)} paneles × 400 Wp",
+        )
+        col2.metric(
+            "Energía anual estimada",
+            f"{kpis['energia_anual_kwh']:,.0f} kWh",
+            f"{kpis['energia_diaria_media']:.1f} kWh/día promedio",
+        )
+        col3.metric(
+            "Mejor mes ☀️",
+            kpis["mejor_mes"],
+            f"{kpis['mejor_mes_kwh']:,.0f} kWh generados",
+        )
+        col4.metric(
+            "Peor mes 🌧️",
+            kpis["peor_mes"],
+            f"{kpis['peor_mes_kwh']:,.0f} kWh generados",
+            delta_color="inverse",
+        )
+
+        st.markdown("---")
+
+        # ── Fila 2: KPIs financieros ───────────────────────────────────────
+        st.markdown("#### 💰 Retorno Financiero")
+        col5, col6, col7, col8 = st.columns(4)
+
+        col5.metric(
+            "Ahorro mensual medio",
+            f"${kpis['ahorro_mensual_medio']:,.0f} COP",
+            "en factura eléctrica",
+        )
+        col6.metric(
+            "Ahorro anual estimado",
+            f"${kpis['ahorro_anual_cop']:,.0f} COP",
+            f"a {int(DEFAULT_PARAMS['tarifa_kwh_cop'])} COP/kWh",
+        )
+        col7.metric(
+            "Período de retorno",
+            f"{kpis['payback_anios']:.1f} años",
+            f"sobre {DEFAULT_PARAMS['vida_util_anios']} años de vida útil",
+        )
+        col8.metric(
+            "ROI a 25 años",
+            f"{kpis['roi_pct']:.1f}%",
+            f"${kpis['ahorro_vida_util_cop']:,.0f} COP total",
+        )
+
+        st.markdown("---")
+
+        # ── Fila 3: KPI ambiental + gauge de potencial ─────────────────────
+        st.markdown("#### 🌱 Impacto Ambiental & Potencial Solar")
+        col9, col10 = st.columns([1, 2])
+
+        with col9:
+            st.metric(
+                "CO₂ evitado por año",
+                f"{kpis['co2_evitado_kg_anual']:,.0f} kg",
+                f"≈ {kpis['co2_evitado_kg_anual'] * 25 / 1000:.1f} ton en 25 años",
+            )
+            st.metric(
+                "Árboles equivalentes",
+                f"{int(kpis['co2_evitado_kg_anual'] / 21)} árboles/año",
+                "1 árbol absorbe ~21 kg CO₂/año",
+            )
+
+        with col10:
+            # Gauge de potencial solar
+            rad_media = get_annual_summary(df)["radiacion_media_dia"]
+
+            fig_gauge = go.Figure(go.Indicator(
+                mode="gauge+number+delta",
+                value=rad_media,
+                title={"text": "Radiación Media Diaria (kWh/m²/día)", "font": {"size": 15}},
+                delta={"reference": 4.5, "suffix": " vs ref. 4.5"},
+                number={"suffix": " kWh/m²/día", "font": {"size": 22}},
+                gauge={
+                    "axis": {"range": [0, 8], "tickcolor": "#e0e0e0"},
+                    "bar":  {"color": "#FF6B35", "thickness": 0.25},
+                    "bgcolor": "#1e1e2e",
+                    "bordercolor": "#2a2a4a",
+                    "steps": [
+                        {"range": [0, 3],   "color": "#1a3a5c"},
+                        {"range": [3, 4.5], "color": "#1a5c3a"},
+                        {"range": [4.5, 6], "color": "#5c4a1a"},
+                        {"range": [6, 8],   "color": "#5c1a1a"},
+                    ],
+                    "threshold": {
+                        "line":  {"color": "#FFD700", "width": 3},
+                        "thickness": 0.8,
+                        "value": rad_media,
+                    },
+                },
+            ))
+            fig_gauge.update_layout(
+                height=280,
+                paper_bgcolor="#0e1117",
+                font=dict(color="#e0e0e0"),
+                margin=dict(t=60, b=20, l=30, r=30),
+            )
+            st.plotly_chart(fig_gauge, use_container_width=True)
+
+        st.markdown("---")
+
+        # ── Tabla resumen financiero por año ───────────────────────────────
+        st.markdown("#### 📊 Proyección financiera (primeros 10 años)")
+
+        filas = []
+        ahorro_base = kpis["ahorro_anual_cop"]
+        for anio in range(1, 11):
+            ahorro_anio  = ahorro_base * ((1 - DEFAULT_PARAMS["degradacion_anual"]) ** (anio - 1))
+            acumulado    = sum(
+                ahorro_base * ((1 - DEFAULT_PARAMS["degradacion_anual"]) ** a)
+                for a in range(anio)
+            )
+            recuperado   = min(acumulado / DEFAULT_PARAMS["precio_sistema_cop"] * 100, 100)
+            filas.append({
+                "Año": anio,
+                "Ahorro anual (COP)":      int(ahorro_anio),
+                "Ahorro acumulado (COP)":  int(acumulado),
+                "Inversión recuperada (%)": round(recuperado, 1),
+                "¿Payback alcanzado?": "✅ Sí" if acumulado >= DEFAULT_PARAMS["precio_sistema_cop"] else "⏳ No",
+            })
+
+        df_proyeccion = pd.DataFrame(filas)
+        st.dataframe(
+            df_proyeccion.style.format({
+                "Ahorro anual (COP)":      "{:,.0f}",
+                "Ahorro acumulado (COP)":  "{:,.0f}",
+                "Inversión recuperada (%)": "{:.1f}%",
+            }).applymap(
+                lambda v: "background-color: #1a3a1a" if v == "✅ Sí" else "",
+                subset=["¿Payback alcanzado?"],
+            ),
+            use_container_width=True,
+            hide_index=True,
+        )
 
     with tab_datos:
         st.subheader("DataFrame completo")
